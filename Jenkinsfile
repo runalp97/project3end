@@ -20,19 +20,19 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t myappimg:latest .'
-                sh 'docker tag myappimg:latest $ECR_REGISTRY/$IMAGE_NAME:latest'
+                sh "docker build -t myappimg:latest ."
+                sh "docker tag myappimg:latest ${ECR_REGISTRY}/${IMAGE_NAME}:latest"
             }
         }
 
         stage('Push to ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ecr-creds']]) {
-                    sh '''
+                    sh """
                         aws ecr get-login-password --region ap-south-1 | \
-                        docker login --username AWS --password-stdin $ECR_REGISTRY
-                        docker push $ECR_REGISTRY/$IMAGE_NAME:latest
-                    '''
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        docker push ${ECR_REGISTRY}/${IMAGE_NAME}:latest
+                    """
                 }
             }
         }
@@ -40,14 +40,14 @@ pipeline {
         stage('Deploy on EC2') {
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no $SSH_HOST '
-                            docker pull $ECR_REGISTRY/$IMAGE_NAME:latest &&
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${SSH_HOST} '
+                            docker pull ${ECR_REGISTRY}/${IMAGE_NAME}:latest &&
                             docker stop myapp || true &&
                             docker rm myapp || true &&
-                            docker run -d -p 80:80 --name myapp $ECR_REGISTRY/$IMAGE_NAME:latest
+                            docker run -d -p 80:80 --name myapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
                         '
-                    '''
+                    """
                 }
             }
         }
@@ -58,24 +58,24 @@ pipeline {
             }
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no $SSH_HOST '
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${SSH_HOST} '
                             docker stop myapp || true &&
                             docker rm myapp || true &&
-                            docker rmi $ECR_REGISTRY/$IMAGE_NAME:latest || true
+                            docker rmi ${ECR_REGISTRY}/${IMAGE_NAME}:latest || true
                         '
-                    '''
+                    """
                 }
             }
         }
     }
 
     post {
-        failure {
-            echo "❌ Deployment failed!"
-        }
         success {
             echo "✅ Deployment succeeded!"
+        }
+        failure {
+            echo "❌ Deployment failed!"
         }
     }
 }

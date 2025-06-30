@@ -2,8 +2,6 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
         SSH_HOST = 'ubuntu@ec2-65-0-85-76.ap-south-1.compute.amazonaws.com'
         ECR_REGISTRY = '122610480795.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_NAME = 'my_appy'
@@ -29,7 +27,7 @@ pipeline {
 
         stage('Push to ECR') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-ecr-creds']]) {
                     sh '''
                         aws ecr get-login-password --region ap-south-1 | \
                         docker login --username AWS --password-stdin $ECR_REGISTRY
@@ -41,13 +39,14 @@ pipeline {
 
         stage('Deploy on EC2') {
             steps {
-                sshagent(['ec2key']) {
+                sshagent(['ec2-ssh-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no $SSH_HOST \
-                        "docker pull $ECR_REGISTRY/$IMAGE_NAME:latest && \
-                        docker stop myapp || true && \
-                        docker rm myapp || true && \
-                        docker run -d -p 80:80 --name myapp $ECR_REGISTRY/$IMAGE_NAME:latest"
+                        ssh -o StrictHostKeyChecking=no $SSH_HOST '
+                            docker pull $ECR_REGISTRY/$IMAGE_NAME:latest &&
+                            docker stop myapp || true &&
+                            docker rm myapp || true &&
+                            docker run -d -p 80:80 --name myapp $ECR_REGISTRY/$IMAGE_NAME:latest
+                        '
                     '''
                 }
             }
@@ -58,19 +57,21 @@ pipeline {
                 expression { return params.DESTROY == true }
             }
             steps {
-                sshagent(['ec2key']) {
+                sshagent(['ec2-ssh-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no $SSH_HOST \
-                        "docker stop myapp || true && \
-                        docker rm myapp || true && \
-                        docker rmi $ECR_REGISTRY/$IMAGE_NAME:latest || true"
+                        ssh -o StrictHostKeyChecking=no $SSH_HOST '
+                            docker stop myapp || true &&
+                            docker rm myapp || true &&
+                            docker rmi $ECR_REGISTRY/$IMAGE_NAME:latest || true
+                        '
                     '''
                 }
             }
         }
     }
 
-    post { failure {
+    post {
+        failure {
             echo "❌ Deployment failed!"
         }
         success {
@@ -78,3 +79,4 @@ pipeline {
         }
     }
 }
+

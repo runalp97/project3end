@@ -47,7 +47,7 @@ pipeline {
                     	  docker pull ${ECR_REGISTRY}/${IMAGE_NAME}:latest &&
                           docker stop mycontainerapp || true &&
                           docker rm mycontainerapp || true &&
-                          docker run -d -p 80:5000 --name mycontainerapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
+                          docker run -d -p 5000:5000 --name mycontainerapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
                         '
                     """
                 }

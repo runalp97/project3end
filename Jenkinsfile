@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SSH_HOST = 'ubuntu@ec2-65-0-85-76.ap-south-1.compute.amazonaws.com'
+        SSH_HOST = 'ubuntu@ec2-15-206-74-24.ap-south-1.compute.amazonaws.com'
         ECR_REGISTRY = '122610480795.dkr.ecr.ap-south-1.amazonaws.com'
         IMAGE_NAME = 'my_appy'
     }
@@ -45,7 +45,7 @@ pipeline {
                             docker pull ${ECR_REGISTRY}/${IMAGE_NAME}:latest &&
                             docker stop myapp || true &&
                             docker rm myapp || true &&
-                            docker run -d -p 80:80 --name myapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
+                            docker run -d -p 80:5000 --name mycontainerapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
                         '
                     """
                 }
@@ -60,8 +60,8 @@ pipeline {
                 sshagent(['ec2-ssh-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${SSH_HOST} '
-                            docker stop myapp || true &&
-                            docker rm myapp || true &&
+                            docker stop mycontainerapp || true &&
+                            docker rm mycontainerapp || true &&
                             docker rmi ${ECR_REGISTRY}/${IMAGE_NAME}:latest || true
                         '
                     """

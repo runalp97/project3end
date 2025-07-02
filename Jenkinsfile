@@ -42,10 +42,12 @@ pipeline {
                 sshagent(['ec2-ssh-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${SSH_HOST} '
-                            docker pull ${ECR_REGISTRY}/${IMAGE_NAME}:latest &&
-                            docker stop myapp || true &&
-                            docker rm myapp || true &&
-                            docker run -d -p 80:5000 --name mycontainerapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
+                          aws ecr get-login-password --region ap-south-1 | \
+                   	  docker login --username AWS --password-stdin ${ECR_REGISTRY} &&
+                    	  docker pull ${ECR_REGISTRY}/${IMAGE_NAME}:latest &&
+                          docker stop mycontainerapp || true &&
+                          docker rm mycontainerapp || true &&
+                          docker run -d -p 80:5000 --name mycontainerapp ${ECR_REGISTRY}/${IMAGE_NAME}:latest
                         '
                     """
                 }
